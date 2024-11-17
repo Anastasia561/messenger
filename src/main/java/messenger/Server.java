@@ -6,14 +6,14 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Set;
 
 public class Server {
     private static final int PORT = 15000;
     private ServerSocket server;
-    private static final Set<ClientHandler> clients = new HashSet<>();
+    private static final HashSet<ClientHandler> clients = new HashSet<>();
 
     public void listenSocket() {
         Socket client = null;
@@ -67,13 +67,14 @@ public class Server {
                     out.println("Registration succeed ");
 
                     sendMessageToSelected(clientName + " joined",
-                            getClientsWithoutExcluded(new String[]{clientName}));
+                            getClientsByName(getNamesWithoutExcluded(new String[]{clientName})));
+
 
                     out.println("List of connected clients: " + engine.getConnectedClients() + " ");
                     out.println("Instruction");
                     out.println("[all] -> to send message to all connected users");
                     out.println("[names] -> to send message to specified users");
-                    out.println("[excluded] -> to send message to all users except specified ones");
+                    out.println("[exclude] -> to send message to all users except specified ones");
                     out.println("[banned] -> get list of banned phrases");
                     out.println("[exit] -> to quit");
 
@@ -83,7 +84,7 @@ public class Server {
                             System.out.println(clientName + " left");
 
                             sendMessageToSelected(clientName + " left",
-                                    getClientsWithoutExcluded(new String[]{clientName}));
+                                    getClientsByName(getNamesWithoutExcluded(new String[]{clientName})));
 
                             clients.remove(this);
                             out.println("Connection closed");
@@ -110,22 +111,38 @@ public class Server {
                 case "names": {
                     out.println("Specify names to which you want message to be send");
                     String[] names = getLine().split(" ");
+                    //send to selected
+                    out.println("Enter message: ");
+                    String message = clientName + ": " + getLine();
+                    sendMessageToSelected(message, getClientsByName(names));
+
                     System.out.println("Sending message of " + clientName + " to " + Arrays.toString(names));
                     out.println("Message was send to " + Arrays.toString(names));
                     break;
                 }
                 case "exclude": {
                     out.println("Specify excluded people (your message will not be send to)");
-                    String[] names = getLine().split(" ");
-                    //process names
-                    System.out.println("Sending message of " + clientName + " to ...");
-                    out.println("Message was send to ...");
+                    String[] excludedNames = (getLine() + " " + clientName).split(" ");
+
+                    //send without excluded
+                    out.println("Enter message: ");
+                    String message = clientName + ": " + getLine();
+                    String[] names = getNamesWithoutExcluded(excludedNames);
+
+                    sendMessageToSelected(message, getClientsByName(names));
+
+                    System.out.println("Sending message of " + clientName + " to " + Arrays.toString(names));
+                    out.println("Message was send to " + Arrays.toString(names));
                     break;
                 }
                 case "all": {
                     //process names
-                    System.out.println("Sending message of " + clientName + " to ...");
-                    out.println("Message was send to ...");
+                    out.println("Enter message: ");
+                    String message = clientName + ": " + getLine();
+                    String[] names = getNamesWithoutExcluded(new String[]{clientName});
+                    sendMessageToSelected(message, getClientsByName(names));
+                    System.out.println("Sending message of " + clientName + " to " + Arrays.toString(names));
+                    out.println("Message was send to " + Arrays.toString(names));
                     break;
                 }
                 case "banned": {
@@ -145,24 +162,35 @@ public class Server {
 
         private void sendMessageToSelected(String message, HashSet<ClientHandler> selected) {
             for (ClientHandler clientHandler : selected) {
-                System.out.println("Sending message to " + clientHandler.clientName);
                 clientHandler.out.println(message);
             }
         }
 
-        private HashSet<ClientHandler> getClientsWithoutExcluded(String[] excludedNames) {
+
+        private HashSet<ClientHandler> getClientsByName(String[] names) {
             HashSet<ClientHandler> selected = new HashSet<>();
             for (ClientHandler clientHandler : clients) {
-                for (String excludedName : excludedNames) {
-                    if (!clientHandler.clientName.equals(excludedName)) {
+                for (String name : names) {
+                    if (clientHandler.clientName.equals(name)) {
                         selected.add(clientHandler);
                     }
                 }
             }
-
             return selected;
         }
+
+        private String[] getNamesWithoutExcluded(String[] excludedNames) {
+            ArrayList<String> names = new ArrayList<>();
+
+            for (ClientHandler clientHandler : clients) {
+                if (!(Arrays.stream(excludedNames).toList().contains(clientHandler.clientName))) {
+                    names.add(clientHandler.clientName);
+                }
+            }
+            return names.toArray(new String[]{});
+        }
     }
+
 
     public static void main(String[] args) {
         Server server = new Server();
