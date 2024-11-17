@@ -5,49 +5,54 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
-import java.util.ArrayList;
 import java.util.Scanner;
 
 public class Client {
     private static final Scanner SCANNER = new Scanner(System.in);
+    private static final int PORT = 15000;
+    private static final String ADDRESS = "localhost";
     private static Socket socket = null;
     private static BufferedReader in = null;
     private static PrintWriter out = null;
 
-    //private static String name;
-
     public static void main(String[] args) {
-        String address = "localhost";
-        int port = 15000;
 
-        createConnection(address, port);
+        createConnection(ADDRESS, PORT);
         System.out.println("Waiting for registration");
 
+        new Thread(new MessageListener()).start();
+
+        String message;
         while (!socket.isClosed()) {
-            String line = receiveLines(1).get(0);
-            System.out.println("Message from server received");
-            System.out.println(line);
-            if (line.equals("Registration failed") || line.equals("Connection closed")) {
-                closeConnection();
-            } else {
-                String answer = SCANNER.nextLine();
-                out.println(answer);
-                System.out.println("Answer to server send");
-            }
+            message = SCANNER.nextLine();
+            out.println(message);
         }
     }
 
-    private static ArrayList<String> receiveLines(int linesNumber) {
-        ArrayList<String> lines = new ArrayList<>();
-        for (int i = 0; i < linesNumber; i++) {
+
+    private static class MessageListener implements Runnable {
+        @Override
+        public void run() {
             try {
-                String line = in.readLine();
-                lines.add(line);
+                String serverMessage;
+                // serverMessage = in.readLine();
+                while ((serverMessage = in.readLine()) != null &&
+                        !serverMessage.equals("Connection closed") &&
+                        !serverMessage.equals("Registration failed")) {
+                    System.out.println(serverMessage);
+                }
+//                do {
+//                    System.out.println(serverMessage);
+//                } while ((serverMessage = in.readLine()) != null &&
+//                        !serverMessage.equals("Connection closed") &&
+//                        !serverMessage.equals("Registration failed")
+//                );
+                System.out.println(serverMessage);
+                closeConnection();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
-        return lines;
     }
 
     private static void createConnection(String address, int port) {
