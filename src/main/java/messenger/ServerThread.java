@@ -47,7 +47,9 @@ public class ServerThread extends Thread {
                     String command = getLine();
                     if (command.equals("exit")) {
                         System.out.println(clientName + " left");
-                        closeSocket("Connection closed", thread_ID);
+                        out.println("Connection closed");
+                        socket.close();
+                        engine.deleteRegisteredClient(clientName);
                     } else {
                         processCommand(command, clientName);
                     }
@@ -55,20 +57,12 @@ public class ServerThread extends Thread {
 
             } else {
                 System.out.println("Registration failed");
-                closeSocket("Registration failed", thread_ID);
+                out.println("Registration failed");
+                socket.close();
             }
 
         } catch (IOException e) {
             System.out.println("Connection error");
-        }
-    }
-
-    private void closeSocket(String message, String thread_ID) {
-        out.println(message);
-        try {
-            socket.close();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
         System.out.println("THREAD " + thread_ID + " exiting");
     }
