@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 
-public class Engine {
+public class FileProcessor {
     private final String clientFilePath = createFilePath();
 
     public void deleteRegisteredClient(String clientName) {
@@ -28,10 +28,6 @@ public class Engine {
             names.add(record.split(" ")[0]);
         }
         return names;
-    }
-
-    public boolean checkForRegistration(String line) {
-        return line.split(" ")[0].equals("srv3");
     }
 
     public void registerClient(String name, int port) {

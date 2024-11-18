@@ -40,7 +40,7 @@ public class Server {
     }
 
     private static class ClientHandler implements Runnable {
-        private static final Engine engine = new Engine();
+        private static final FileProcessor PROCESSOR = new FileProcessor();
         private final Socket socket;
         private BufferedReader in = null;
         private PrintWriter out = null;
@@ -59,97 +59,127 @@ public class Server {
                 out.println("To connect: [serverName clientName]");
 
                 String line = getLine();
-                if (engine.checkForRegistration(line)) {
-                    clientName = line.split(" ")[1];
-                    System.out.println("Registering client: " + clientName);
-                    engine.registerClient(clientName, socket.getLocalPort());
-
-                    out.println("Registration succeed ");
-
-                    sendMessageToSelected(clientName + " joined",
-                            getClientsByName(getNamesWithoutExcluded(new String[]{clientName})));
-
-
-                    out.println("List of connected clients: " + engine.getConnectedClients() + " ");
-                    out.println("Instruction");
-                    out.println("[all] -> to send message to all connected users");
-                    out.println("[names] -> to send message to specified users");
-                    out.println("[exclude] -> to send message to all users except specified ones");
-                    out.println("[banned] -> get list of banned phrases");
-                    out.println("[exit] -> to quit");
-
-                    while (!socket.isClosed()) {
-                        String command = getLine();
-                        if (command.equals("exit")) {
-                            System.out.println(clientName + " left");
-
-                            sendMessageToSelected(clientName + " left",
-                                    getClientsByName(getNamesWithoutExcluded(new String[]{clientName})));
-
-                            clients.remove(this);
-                            out.println("Connection closed");
-                            socket.close();
-                            engine.deleteRegisteredClient(clientName);
-                        } else {
-                            processCommand(command, clientName);
-                        }
+                if (checkForRegistration(line)) {
+                    String name = line.split(" ")[1];
+                    while (checkNamesIfExist(new String[]{name}, false)) {
+                        out.println("Client with name " + name + " already exists");
+                        out.println("Try another name");
+                        name = getLine();
                     }
+                    clientName = name;
+                    registerClient();
+                    sendInstruction();
+                    processCommands();
 
                 } else {
                     System.out.println("Registration failed");
                     out.println("Registration failed");
                     socket.close();
                 }
-
             } catch (IOException e) {
                 System.out.println("Connection error");
             }
         }
 
+        private void registerClient() {
+            System.out.println("Registering client: " + clientName);
+            PROCESSOR.registerClient(clientName, socket.getLocalPort());
+
+            out.println("Registration succeed");
+
+            sendMessageToSelected(clientName + " joined",
+                    getClientsByName(getNamesWithoutExcluded(new String[]{clientName})));
+        }
+
+        private void sendInstruction() {
+            out.println("List of connected clients: " + PROCESSOR.getConnectedClients() + " ");
+            out.println("Instruction");
+            out.println("[all] -> to send message to all connected users");
+            out.println("[names] -> to send message to specified users (default)");
+            out.println("[exclude] -> to send message to all users except specified ones");
+            out.println("[banned] -> get list of banned phrases");
+            out.println("[exit] -> to quit");
+        }
+
+        private void processCommands() {
+            while (!socket.isClosed()) {
+                out.println("Waiting for command");
+                String command = getLine();
+                if (command.equals("exit")) {
+                    System.out.println(clientName + " left");
+
+                    sendMessageToSelected(clientName + " left",
+                            getClientsByName(getNamesWithoutExcluded(new String[]{clientName})));
+
+                    clients.remove(this);
+                    out.println("Connection closed");
+                    try {
+                        socket.close();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    PROCESSOR.deleteRegisteredClient(clientName);
+                } else {
+                    processCommand(command, clientName);
+                }
+            }
+        }
+
+        private boolean checkForRegistration(String line) {
+            return line.split(" ")[0].equals("srv3");
+        }
+
         private void processCommand(String command, String clientName) {
             switch (command) {
-                case "names": {
-                    out.println("Specify names to which you want message to be send");
-                    String[] names = getLine().split(" ");
-                    //send to selected
-                    out.println("Enter message: ");
-                    String message = clientName + ": " + getLine();
-                    sendMessageToSelected(message, getClientsByName(names));
-
-                    System.out.println("Sending message of " + clientName + " to " + Arrays.toString(names));
-                    out.println("Message was send to " + Arrays.toString(names));
-                    break;
-                }
                 case "exclude": {
                     out.println("Specify excluded people (your message will not be send to)");
                     String[] excludedNames = (getLine() + " " + clientName).split(" ");
-
-                    //send without excluded
-                    out.println("Enter message: ");
-                    String message = clientName + ": " + getLine();
-                    String[] names = getNamesWithoutExcluded(excludedNames);
-
-                    sendMessageToSelected(message, getClientsByName(names));
-
-                    System.out.println("Sending message of " + clientName + " to " + Arrays.toString(names));
-                    out.println("Message was send to " + Arrays.toString(names));
+                    if (checkNamesIfExist(excludedNames, true)) {
+                        String[] names = getNamesWithoutExcluded(excludedNames);
+                        sentTo(names);
+                    }
                     break;
                 }
                 case "all": {
-                    //process names
-                    out.println("Enter message: ");
-                    String message = clientName + ": " + getLine();
                     String[] names = getNamesWithoutExcluded(new String[]{clientName});
-                    sendMessageToSelected(message, getClientsByName(names));
-                    System.out.println("Sending message of " + clientName + " to " + Arrays.toString(names));
-                    out.println("Message was send to " + Arrays.toString(names));
+                    sentTo(names);
                     break;
                 }
                 case "banned": {
                     System.out.println("Sending banned phrases to " + clientName);
                     out.println("...");
+                    break;
+                }
+                case "names": {
+                    out.println("Specify names to which you want message to be send");
+                    String[] names = getLine().split(" ");
+                    if (checkNamesIfExist(names, true)) {
+                        sentTo(names);
+                    }
+                    break;
+                }
+                default: {
+                    out.println("Command was incorrect, using default one [names]");
+                    out.println("Specify names to which you want message to be send");
+                    String[] names = getLine().split(" ");
+                    if (checkNamesIfExist(names, true)) {
+                        sentTo(names);
+                    }
                 }
             }
+        }
+
+        private String getMessage() {
+            out.println("Enter message: ");
+            return clientName + ": " + getLine();
+        }
+
+        private void sentTo(String[] names) {
+            String message = getMessage();
+            sendMessageToSelected(message, getClientsByName(names));
+
+            System.out.println("Sending message of " + clientName + " to " + Arrays.toString(names));
+            out.println("Message was send to " + Arrays.toString(names));
         }
 
         private String getLine() {
@@ -188,6 +218,26 @@ public class Server {
                 }
             }
             return names.toArray(new String[]{});
+        }
+
+        private boolean checkNamesIfExist(String[] names, boolean printMessage) {
+            ArrayList<String> notMatched = new ArrayList<>();
+            if (clients.size() == 1) {
+                return false;
+            } else {
+                for (String name : names) {
+                    if (!clients.stream().map(e -> e.clientName).toList().contains(name)) {
+                        notMatched.add(name);
+                    }
+                }
+                if (!notMatched.isEmpty()) {
+                    if (printMessage) {
+                        out.println(notMatched + " does not refer to any of the currently connected clients");
+                    }
+                    return false;
+                }
+                return true;
+            }
         }
     }
 
