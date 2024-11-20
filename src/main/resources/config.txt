@@ -1,5 +1,7 @@
 15000
 srv3
-banned
-bad
-smoke
+banned phrase1
+bad phrase2
+banned phrase3
+banned word
+bad word

@@ -158,19 +158,30 @@ public class Server {
                     String[] excludedNames = (getLine() + " " + clientName).split(" ");
                     if (checkNamesIfExist(excludedNames, true)) {
                         String[] names = getNamesWithoutExcluded(excludedNames);
-                        sentTo(names);
+                        if (names.length != 0) {
+                            sentTo(names);
+                        } else {
+                            out.println("There are no other users to whom message could be send");
+                        }
                     }
                     break;
                 }
                 case "all": {
                     String[] names = getNamesWithoutExcluded(new String[]{clientName});
-                    sentTo(names);
+                    if (checkNamesIfExist(names, true)) {
+                        sentTo(names);
+                    }
                     break;
                 }
                 case "banned": {
-                    System.out.println("Sending banned phrases to " + clientName);
-                    out.println("Banned phrases: ");
-                    out.println(bannedWords);
+                    System.out.println("Checking phrase for being banned");
+                    out.println("Enter phrase you wan to check: ");
+                    String phrase = getLine();
+                    if (checkForBannedPhrase(phrase)) {
+                        out.println("This phrase is banned");
+                    } else {
+                        out.println("This phrase is permitted to use");
+                    }
                     break;
                 }
                 case "names": {
@@ -250,6 +261,9 @@ public class Server {
         private boolean checkNamesIfExist(String[] names, boolean printMessage) {
             ArrayList<String> notMatched = new ArrayList<>();
             if (clients.size() == 1) {
+                if (printMessage) {
+                    out.println("There are no other users to whom message could be send");
+                }
                 return false;
             } else {
                 for (String name : names) {
@@ -267,7 +281,6 @@ public class Server {
             }
         }
     }
-
 
     public static void main(String[] args) {
         Server server = new Server();
