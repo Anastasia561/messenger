@@ -57,7 +57,7 @@ public class Server {
         private final Socket socket;
         private BufferedReader in = null;
         private PrintWriter out = null;
-        private String clientName;
+        private String clientName = "default";
 
         public ClientHandler(Socket socket) {
             this.socket = socket;
