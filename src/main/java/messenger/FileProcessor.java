@@ -41,7 +41,7 @@ public class FileProcessor {
         return "src/main/resources/clients_" + dtf.format(now) + ".txt";
     }
 
-    private ArrayList<String> readFromFile(String filePath) {
+    public ArrayList<String> readFromFile(String filePath) {
         ArrayList<String> lines = new ArrayList<>();
 
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {

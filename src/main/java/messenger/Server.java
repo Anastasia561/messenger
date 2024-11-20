@@ -11,15 +11,20 @@ import java.util.Arrays;
 import java.util.HashSet;
 
 public class Server {
-    private static final int PORT = 15000;
+    private static final String CONFIG_PATH = "C:\\Users\\User\\JavaProjects\\Messenger\\src\\main\\resources\\config.txt";
+    private static final FileProcessor PROCESSOR = new FileProcessor();
+    private static int port;
+    private static String serverName;
     private ServerSocket server;
+    private static ArrayList<String> bannedWords;
     private static final HashSet<ClientHandler> clients = new HashSet<>();
 
     public void listenSocket() {
         Socket client = null;
+        loadConfig(CONFIG_PATH);
 
         try {
-            server = new ServerSocket(PORT);
+            server = new ServerSocket(port);
         } catch (IOException e) {
             System.out.println("Could not create ServerSocket");
             System.exit(-1);
@@ -39,8 +44,16 @@ public class Server {
         }
     }
 
+    private void loadConfig(String path) {
+        ArrayList<String> configs = PROCESSOR.readFromFile(path);
+        port = Integer.parseInt(configs.get(0));
+        serverName = configs.get(1);
+        configs.remove(0);
+        configs.remove(0);
+        bannedWords = configs;
+    }
+
     private static class ClientHandler implements Runnable {
-        private static final FileProcessor PROCESSOR = new FileProcessor();
         private final Socket socket;
         private BufferedReader in = null;
         private PrintWriter out = null;
@@ -126,7 +139,16 @@ public class Server {
         }
 
         private boolean checkForRegistration(String line) {
-            return line.split(" ")[0].equals("srv3");
+            return line.split(" ")[0].equals(serverName);
+        }
+
+        private boolean checkForBannedPhrase(String message) {
+            for (String bannedWord : bannedWords) {
+                if (message.contains(bannedWord)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private void processCommand(String command, String clientName) {
@@ -147,7 +169,8 @@ public class Server {
                 }
                 case "banned": {
                     System.out.println("Sending banned phrases to " + clientName);
-                    out.println("...");
+                    out.println("Banned phrases: ");
+                    out.println(bannedWords);
                     break;
                 }
                 case "names": {
@@ -176,10 +199,14 @@ public class Server {
 
         private void sentTo(String[] names) {
             String message = getMessage();
-            sendMessageToSelected(message, getClientsByName(names));
+            if (checkForBannedPhrase(message)) {
+                out.println("Message will not be send, it contains banned phrase");
+            } else {
+                sendMessageToSelected(message, getClientsByName(names));
 
-            System.out.println("Sending message of " + clientName + " to " + Arrays.toString(names));
-            out.println("Message was send to " + Arrays.toString(names));
+                System.out.println("Sending message of " + clientName + " to " + Arrays.toString(names));
+                out.println("Message was send to " + Arrays.toString(names));
+            }
         }
 
         private String getLine() {
