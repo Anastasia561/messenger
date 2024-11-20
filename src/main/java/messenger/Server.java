@@ -26,8 +26,7 @@ public class Server {
         try {
             server = new ServerSocket(port);
         } catch (IOException e) {
-            System.out.println("Could not create ServerSocket");
-            System.exit(-1);
+            throw new RuntimeException("Could not create ServerSocket");
         }
         System.out.println("Server ready on port: " + server.getLocalPort());
 
@@ -35,8 +34,7 @@ public class Server {
             try {
                 client = server.accept();
             } catch (IOException e) {
-                System.out.println("Accept failed");
-                System.exit(-1);
+                throw new RuntimeException("Accept failed");
             }
             ClientHandler clientHandler = new ClientHandler(client);
             clients.add(clientHandler);
@@ -87,10 +85,11 @@ public class Server {
                 } else {
                     System.out.println("Registration failed");
                     out.println("Registration failed");
+                    clients.remove(this);
                     socket.close();
                 }
             } catch (IOException e) {
-                System.out.println("Connection error");
+                throw new RuntimeException("Connection exception");
             }
         }
 
@@ -99,6 +98,7 @@ public class Server {
             PROCESSOR.registerClient(clientName, socket.getLocalPort());
 
             out.println("Registration succeed");
+            out.println("Welcome, " + clientName + "!");
 
             sendMessageToSelected(clientName + " joined",
                     getClientsByName(getNamesWithoutExcluded(new String[]{clientName})));
@@ -106,12 +106,14 @@ public class Server {
 
         private void sendInstruction() {
             out.println("List of connected clients: " + PROCESSOR.getConnectedClients() + " ");
+            out.println("-".repeat(30));
             out.println("Instruction");
             out.println("[all] -> to send message to all connected users");
             out.println("[names] -> to send message to specified users (default)");
             out.println("[exclude] -> to send message to all users except specified ones");
-            out.println("[banned] -> get list of banned phrases");
+            out.println("[banned] -> to check whether phrase is banned");
             out.println("[exit] -> to quit");
+            out.println("-".repeat(30));
         }
 
         private void processCommands() {
@@ -139,7 +141,11 @@ public class Server {
         }
 
         private boolean checkForRegistration(String line) {
-            return line.split(" ")[0].equals(serverName);
+            String[] data = line.split(" ");
+            if (data.length == 2) {
+                return line.split(" ")[0].equals(serverName);
+            }
+            return false;
         }
 
         private boolean checkForBannedPhrase(String message) {
@@ -159,7 +165,7 @@ public class Server {
                     if (checkNamesIfExist(excludedNames, true)) {
                         String[] names = getNamesWithoutExcluded(excludedNames);
                         if (names.length != 0) {
-                            sentTo(names);
+                            sentTo(names, "private from");
                         } else {
                             out.println("There are no other users to whom message could be send");
                         }
@@ -169,7 +175,7 @@ public class Server {
                 case "all": {
                     String[] names = getNamesWithoutExcluded(new String[]{clientName});
                     if (checkNamesIfExist(names, true)) {
-                        sentTo(names);
+                        sentTo(names, "to all from");
                     }
                     break;
                 }
@@ -188,7 +194,7 @@ public class Server {
                     out.println("Specify names to which you want message to be send");
                     String[] names = getLine().split(" ");
                     if (checkNamesIfExist(names, true)) {
-                        sentTo(names);
+                        sentTo(names, "private from");
                     }
                     break;
                 }
@@ -197,19 +203,19 @@ public class Server {
                     out.println("Specify names to which you want message to be send");
                     String[] names = getLine().split(" ");
                     if (checkNamesIfExist(names, true)) {
-                        sentTo(names);
+                        sentTo(names, "private from");
                     }
                 }
             }
         }
 
-        private String getMessage() {
+        private String getMessage(String prefix) {
             out.println("Enter message: ");
-            return clientName + ": " + getLine();
+            return prefix + " " + clientName + ": " + getLine();
         }
 
-        private void sentTo(String[] names) {
-            String message = getMessage();
+        private void sentTo(String[] names, String prefix) {
+            String message = getMessage(prefix);
             if (checkForBannedPhrase(message)) {
                 out.println("Message will not be send, it contains banned phrase");
             } else {
@@ -267,7 +273,7 @@ public class Server {
                 return false;
             } else {
                 for (String name : names) {
-                    if (!clients.stream().map(e -> e.clientName).toList().contains(name)) {
+                    if (!clients.stream().map(e -> e.clientName).toList().contains(name) && !name.equals("default")) {
                         notMatched.add(name);
                     }
                 }
