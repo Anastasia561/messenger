@@ -9,10 +9,13 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Server {
     private static final String CONFIG_PATH = "C:\\Users\\User\\JavaProjects\\Messenger\\src\\main\\resources\\config.txt";
     private static final FileProcessor PROCESSOR = new FileProcessor();
+    private static final ExecutorService EXECUTOR_SERVICE = Executors.newCachedThreadPool();
     private static int port;
     private static String serverName;
     private ServerSocket server;
@@ -38,7 +41,7 @@ public class Server {
             }
             ClientHandler clientHandler = new ClientHandler(client);
             clients.add(clientHandler);
-            new Thread(clientHandler).start();
+            EXECUTOR_SERVICE.submit(clientHandler);
         }
     }
 
