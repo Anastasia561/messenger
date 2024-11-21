@@ -31,14 +31,7 @@ public class FileProcessor {
     }
 
     public void registerClient(String name, int port) {
-        System.out.println("register client:  " + name);
         writeToFile(clientFilePath, name + " " + port + "\n", true);
-    }
-
-    private String createFilePath() {
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd.MM_HH-mm");
-        LocalDateTime now = LocalDateTime.now();
-        return "src/main/resources/clients_" + dtf.format(now) + ".txt";
     }
 
     public ArrayList<String> readFromFile(String filePath) {
@@ -62,5 +55,11 @@ public class FileProcessor {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private String createFilePath() {
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd.MM_HH-mm");
+        LocalDateTime now = LocalDateTime.now();
+        return "src/main/resources/clients_" + dtf.format(now) + ".txt";
     }
 }

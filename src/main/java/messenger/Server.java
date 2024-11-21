@@ -83,7 +83,6 @@ public class Server {
                     processCommands();
 
                 } else {
-                    System.out.println("Registration failed");
                     out.println("Registration failed");
                     clients.remove(this);
                     socket.close();
@@ -94,11 +93,10 @@ public class Server {
         }
 
         private void registerClient() {
-            System.out.println("Registering client: " + clientName);
             PROCESSOR.registerClient(clientName, socket.getLocalPort());
 
             out.println("Registration succeed");
-            out.println("Welcome, " + clientName + "!");
+            out.println("Welcome, " + clientName + " !");
 
             sendMessageToSelected(clientName + " joined",
                     getClientsByName(getNamesWithoutExcluded(new String[]{clientName})));
@@ -108,8 +106,8 @@ public class Server {
             out.println("List of connected clients: " + PROCESSOR.getConnectedClients() + " ");
             out.println("-".repeat(30));
             out.println("Instruction");
-            out.println("[all] -> to send message to all connected users");
-            out.println("[names] -> to send message to specified users (default)");
+            out.println("[all] -> to send message to all connected users (default)");
+            out.println("[names] -> to send message to specified users");
             out.println("[exclude] -> to send message to all users except specified ones");
             out.println("[banned] -> to check whether phrase is banned");
             out.println("[exit] -> to quit");
@@ -121,7 +119,6 @@ public class Server {
                 out.println("Waiting for command");
                 String command = getLine();
                 if (command.equals("exit")) {
-                    System.out.println(clientName + " left");
 
                     sendMessageToSelected(clientName + " left",
                             getClientsByName(getNamesWithoutExcluded(new String[]{clientName})));
@@ -180,7 +177,6 @@ public class Server {
                     break;
                 }
                 case "banned": {
-                    System.out.println("Checking phrase for being banned");
                     out.println("Enter phrase you wan to check: ");
                     String phrase = getLine();
                     if (checkForBannedPhrase(phrase)) {
@@ -199,11 +195,10 @@ public class Server {
                     break;
                 }
                 default: {
-                    out.println("Command was incorrect, using default one [names]");
-                    out.println("Specify names to which you want message to be send");
-                    String[] names = getLine().split(" ");
+                    out.println("Command was incorrect, using default one [all]");
+                    String[] names = getNamesWithoutExcluded(new String[]{clientName});
                     if (checkNamesIfExist(names, true)) {
-                        sentTo(names, "private from");
+                        sentTo(names, "to all from");
                     }
                 }
             }
@@ -221,7 +216,6 @@ public class Server {
             } else {
                 sendMessageToSelected(message, getClientsByName(names));
 
-                System.out.println("Sending message of " + clientName + " to " + Arrays.toString(names));
                 out.println("Message was send to " + Arrays.toString(names));
             }
         }
@@ -239,7 +233,6 @@ public class Server {
                 clientHandler.out.println(message);
             }
         }
-
 
         private HashSet<ClientHandler> getClientsByName(String[] names) {
             HashSet<ClientHandler> selected = new HashSet<>();

@@ -19,11 +19,7 @@ public class ClientWindow extends JFrame {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            try {
-                new ClientWindow().start();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            new ClientWindow().start();
         });
     }
 
@@ -71,7 +67,7 @@ public class ClientWindow extends JFrame {
         setVisible(true);
     }
 
-    private void start() throws IOException {
+    private void start() {
         createConnection(SERVER_ADDRESS, SERVER_PORT);
 
         new Thread(new IncomingMessageListener()).start();
@@ -85,6 +81,10 @@ public class ClientWindow extends JFrame {
         }
     }
 
+    private void setClientNameTitle(String name) {
+        setTitle(getTitle() + "[" + name + "]");
+    }
+
     private class IncomingMessageListener implements Runnable {
         @Override
         public void run() {
@@ -94,9 +94,12 @@ public class ClientWindow extends JFrame {
                         !serverMessage.equals("Connection closed") &&
                         !serverMessage.equals("Registration failed")) {
                     textArea.append(serverMessage + "\n");
+                    if (serverMessage.startsWith("Welcome")) {
+                        String name = serverMessage.split(" ")[1];
+                        setClientNameTitle(name);
+                    }
                 }
                 textArea.append(serverMessage + "\n");
-                System.out.println(serverMessage);
                 closeConnection();
             } catch (IOException e) {
                 throw new RuntimeException("Connection exception");
@@ -105,7 +108,6 @@ public class ClientWindow extends JFrame {
     }
 
     private static void createConnection(String address, int port) {
-        System.out.println("Creating connection");
         try {
             socket = new Socket(address, port);
             out = new PrintWriter(socket.getOutputStream(), true);
@@ -113,16 +115,13 @@ public class ClientWindow extends JFrame {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        System.out.println("Connection created");
     }
 
     private static void closeConnection() {
-        System.out.println("Closing connection");
         try {
             socket.close();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        System.out.println("Connection closed");
     }
 }
